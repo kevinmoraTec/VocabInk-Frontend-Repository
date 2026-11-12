@@ -66,13 +66,21 @@ Open **http://localhost:8080** (or the URL printed by Vite if that port is occup
 
 ### Environment configuration
 
+Local `.env` (not committed):
+
 ```dotenv
 VITE_API_URL=http://localhost:3000
 ```
 
-Set this to the backend origin, without adding `/api` or `/v1`: the frontend already includes `/v1` in its endpoint paths. Restart the development server after changing it.
+Production uses a relative URL so the browser stays on the same host and Caddy can proxy API traffic:
 
-All `VITE_` values are public browser configuration. Keep AI provider keys, OAuth client secrets, and other credentials on the backend. Local `.env` files are ignored by Git; `.env.example` is included as a safe template.
+```dotenv
+VITE_API_URL=/api
+```
+
+API paths already include `/v1` (for example `/v1/auth/verify`). In production a call becomes `https://vocabink.kevinmora.com/api/v1/auth/verify`. Do not set this to a Docker-internal hostname such as `http://api:3000`; that name is not reachable from a visitor's browser.
+
+All `VITE_` values are public browser configuration. Keep AI provider keys, OAuth client secrets, and other credentials on the backend. Local `.env` files are ignored by Git; `.env.example` and `.env.production` are committed templates.
 
 ### Backend integration
 
@@ -82,16 +90,16 @@ Authentication uses backend-managed cookies. The backend must allow the frontend
 
 ### Docker
 
-Build a production image and serve the Vite `dist` output with nginx on port 80. Pass `VITE_API_URL` at **build** time; Vite inlines it into the bundle.
+Vite inlines `VITE_API_URL` at **build** time, not when nginx starts. The image defaults to `/api`:
 
 ```bash
-docker build --build-arg VITE_API_URL=https://api.example.com -t vocabink .
+docker build -t vocabink .
 docker run --rm -p 80:80 vocabink
 ```
 
-`nginx.conf` maps client-side routes (for example `/dashboard`) back to `index.html`.
+The GitHub Actions publish workflow passes `VITE_API_URL=/api` as a build-arg (`.dockerignore` excludes `.env.*`, so `.env.production` is not copied into the image). After a successful publish, pull and recreate the frontend container on Lightsail.
 
-Pushes to `main` (and manual **workflow_dispatch**) publish the image to GHCR as `ghcr.io/<owner>/<repo>:latest` and `:<sha>`. Set the repository variable `VITE_API_URL` under **Settings → Secrets and variables → Actions → Variables** so the production bundle points at your backend.
+`nginx.conf` maps client-side routes (for example `/dashboard`) back to `index.html`. Caddy in front of this container should reverse-proxy `/api` to the Node backend (strip the `/api` prefix if the API listens on `/v1`).
 
 ## Development commands
 

@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+export const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // LinkedIn OAuth
 export const LINKEDIN_CONNECT_ENDPOINT = '/v1/auth/linkedin/connect';
