@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL || '/api';
+export const API_URL = import.meta.env.VITE_API_URL || '';
 
 // LinkedIn OAuth
 export const LINKEDIN_CONNECT_ENDPOINT = '/v1/auth/linkedin/connect';

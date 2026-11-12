@@ -72,13 +72,13 @@ Local `.env` (not committed):
 VITE_API_URL=http://localhost:3000
 ```
 
-Production uses a relative URL so the browser stays on the same host and Caddy can proxy API traffic:
+Production uses the public backend origin, without an `/api` or `/v1` suffix:
 
 ```dotenv
-VITE_API_URL=/api
+VITE_API_URL=https://vocabink.kevinmora.com
 ```
 
-API paths already include `/v1` (for example `/v1/auth/verify`). In production a call becomes `https://vocabink.kevinmora.com/api/v1/auth/verify`. Do not set this to a Docker-internal hostname such as `http://api:3000`; that name is not reachable from a visitor's browser.
+API paths already include `/v1` (for example `/v1/auth/verify`). In production a call becomes `https://vocabink.kevinmora.com/v1/auth/verify`. Do not set this to a Docker-internal hostname such as `http://api:3000`; that name is not reachable from a visitor's browser.
 
 All `VITE_` values are public browser configuration. Keep AI provider keys, OAuth client secrets, and other credentials on the backend. Local `.env` files are ignored by Git; `.env.example` and `.env.production` are committed templates.
 
@@ -88,18 +88,26 @@ The frontend expects a compatible API for authentication, onboarding, vocabulary
 
 Authentication uses backend-managed cookies. The backend must allow the frontend origin with credentialed CORS and configure cookies and OAuth redirects for the environment. The frontend handles the `/auth/callback` route. Provider setup and AI generation logic are outside this repository.
 
+For production Google login, the button redirects to `https://vocabink.kevinmora.com/v1/auth/google`. Set the following in the **backend** production environment (managed outside this frontend repository):
+
+```dotenv
+GOOGLE_CALLBACK_URL=https://vocabink.kevinmora.com/v1/auth/google/callback
+```
+
+Add that exact callback URL to the Google OAuth client's **Authorized redirect URIs** in Google Console. This backend callback is separate from the frontend `/auth/callback` route. Restart the backend after changing its environment, and rebuild and redeploy the frontend after changing `VITE_API_URL`.
+
 ### Docker
 
-Vite inlines `VITE_API_URL` at **build** time, not when nginx starts. The image defaults to `/api`:
+Vite inlines `VITE_API_URL` at **build** time, not when nginx starts. The image defaults to `https://vocabink.kevinmora.com`:
 
 ```bash
 docker build -t vocabink .
 docker run --rm -p 80:80 vocabink
 ```
 
-The GitHub Actions publish workflow passes `VITE_API_URL=/api` as a build-arg (`.dockerignore` excludes `.env.*`, so `.env.production` is not copied into the image). After a successful publish, pull and recreate the frontend container on Lightsail.
+The GitHub Actions publish workflow passes `VITE_API_URL=https://vocabink.kevinmora.com` as a build-arg (`.dockerignore` excludes `.env.*`, so `.env.production` is not copied into the image). After a successful publish, pull and recreate the frontend container on Lightsail.
 
-`nginx.conf` maps client-side routes (for example `/dashboard`) back to `index.html`. Caddy in front of this container should reverse-proxy `/api` to the Node backend (strip the `/api` prefix if the API listens on `/v1`).
+`nginx.conf` maps client-side routes (for example `/dashboard`) back to `index.html`. Caddy in front of this container must reverse-proxy `/v1/*` to the Node backend while preserving the `/v1` prefix. Route other requests to the frontend container.
 
 ## Development commands
 
