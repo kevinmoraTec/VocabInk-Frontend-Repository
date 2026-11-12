@@ -80,6 +80,19 @@ The frontend expects a compatible API for authentication, onboarding, vocabulary
 
 Authentication uses backend-managed cookies. The backend must allow the frontend origin with credentialed CORS and configure cookies and OAuth redirects for the environment. The frontend handles the `/auth/callback` route. Provider setup and AI generation logic are outside this repository.
 
+### Docker
+
+Build a production image and serve the Vite `dist` output with nginx on port 80. Pass `VITE_API_URL` at **build** time; Vite inlines it into the bundle.
+
+```bash
+docker build --build-arg VITE_API_URL=https://api.example.com -t vocabink .
+docker run --rm -p 80:80 vocabink
+```
+
+`nginx.conf` maps client-side routes (for example `/dashboard`) back to `index.html`.
+
+Pushes to `main` (and manual **workflow_dispatch**) publish the image to GHCR as `ghcr.io/<owner>/<repo>:latest` and `:<sha>`. Set the repository variable `VITE_API_URL` under **Settings → Secrets and variables → Actions → Variables** so the production bundle points at your backend.
+
 ## Development commands
 
 | Command | Purpose |
@@ -91,12 +104,12 @@ Authentication uses backend-managed cookies. The backend must allow the frontend
 | `npm run build:dev` | Build using development mode |
 | `npm run preview` | Serve the build locally for inspection |
 
-GitHub Actions runs type checking, lint, and a production build on pushes and pull requests. There is no automated test suite configured yet. ESLint currently reports warnings for hook dependencies and component exports.
+GitHub Actions runs type checking, lint, and a production build on pushes and pull requests. Pushes to `main` also publish a Docker image to GHCR. There is no automated test suite configured yet. ESLint currently reports warnings for hook dependencies and component exports.
 
 ## Project structure
 
 ```text
-.github/workflows/      Frontend validation workflow
+.github/workflows/      Frontend validation and GHCR image publish
 public/
   logo.svg              Brand mark and browser icon
   screenshots/          Product screenshots
